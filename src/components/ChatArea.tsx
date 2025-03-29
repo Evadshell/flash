@@ -28,6 +28,7 @@ const CALL_CONFIG = {
 const ChatArea = ({ channelId }: { channelId?: string }) => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [file, setFile] = useState<File | null>(null); // State for the selected file
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isInCall, setIsInCall] = useState(false);
@@ -215,6 +216,142 @@ const ChatArea = ({ channelId }: { channelId?: string }) => {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  const handleSendFile = async () => {
+    if (!file || !channelId || !user) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    console.log("Message", message);
+
+    if (message.startsWith("/answer")) {
+      // Extract the query after "/answer"
+      const query = message.replace("/answer", "").trim();
+      formData.append("query", query); // Add the query to the form data
+      formData.append("senderId", user.id);
+
+      try {
+        setLoading(true);
+        const res = await fetch("https://3701-1-6-29-197.ngrok-free.app/doc_qna", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+        const data = "Error fetching answer";
+        console.log("File and query sent failure:");
+
+        // Send the response as a message to the WebSocket server
+        if (socketRef.current) {
+          socketRef.current.emit("sendMessage", {
+            channelId,
+            text: `Response: Error fetching answer`,
+            userEmail: user.emailAddresses[0].emailAddress,
+          });
+        }
+
+        // Optionally, add the response to the local chat UI
+        setMessages((prev) => [
+          ...prev,
+          {
+            _id: Date.now().toString(),
+            senderEmail: user.emailAddresses[0].emailAddress,
+            text: `Response: Error fetching answer`,
+            createdAt: new Date().toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "numeric",
+              hour12: true,
+            }),
+          },
+        ]);
+
+        setMessage("");
+        setFile(null);
+          throw new Error("Failed to send file and query to /api/answer");
+        }
+
+        const data = await res.json();
+        console.log("File and query sent successfully:", data);
+
+        // Send the response as a message to the WebSocket server
+        if (socketRef.current) {
+          socketRef.current.emit("sendMessage", {
+            channelId,
+            text: `Response: ${data.answer}`,
+            userEmail: user.emailAddresses[0].emailAddress,
+          });
+        }
+
+        // Optionally, add the response to the local chat UI
+        setMessages((prev) => [
+          ...prev,
+          {
+            _id: Date.now().toString(),
+            senderEmail: user.emailAddresses[0].emailAddress,
+            text: `Response: ${data.response}`,
+            createdAt: new Date().toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "numeric",
+              hour12: true,
+            }),
+          },
+        ]);
+
+        setMessage("");
+        setFile(null);
+      } catch (error) {
+        console.error("Error sending file and query:", error);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Default behavior: Send the file to the /api/upload endpoint
+      formData.append("channelId", channelId);
+      formData.append("senderId", user.id);
+
+      try {
+        setLoading(true);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error("Failed to upload file");
+
+        const data = await res.json();
+        console.log("File uploaded successfully:", data);
+
+        // Optionally, add the file message to the chat
+        setMessages((prev) => [
+          ...prev,
+          {
+            _id: Date.now().toString(),
+            senderEmail: user.emailAddresses[0].emailAddress,
+            text: `File uploaded: ${data.file.url}`,
+            createdAt: new Date().toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "numeric",
+              hour12: true,
+            }),
+          },
+        ]);
+
+        setMessage("");
+        setFile(null);
+      } catch (error) {
+        console.error("Error uploading file:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || !user || !channelId || !socketRef.current) return;
@@ -357,9 +494,15 @@ const ChatArea = ({ channelId }: { channelId?: string }) => {
           ) : (
             <form onSubmit={handleSendMessage}>
               <div className="flex items-center space-x-2">
-                <button type="button" className="p-2 hover:bg-gray-800 rounded-lg">
+                <label className="p-2 hover:bg-gray-800 rounded-lg cursor-pointer">
                   <Paperclip className="h-5 w-5 text-gray-400" />
-                </button>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={loading}
+                  />
+                </label>
                 <input
                   type="text"
                   value={message}
@@ -368,9 +511,6 @@ const ChatArea = ({ channelId }: { channelId?: string }) => {
                   className="flex-1 p-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={loading}
                 />
-                <button type="button" className="p-2 hover:bg-gray-800 rounded-lg">
-                  <Smile className="h-5 w-5 text-gray-400" />
-                </button>
                 <button
                   type="submit"
                   className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
@@ -380,6 +520,18 @@ const ChatArea = ({ channelId }: { channelId?: string }) => {
                 </button>
               </div>
             </form>
+          )}
+          {file && (
+            <div className="mt-2 flex items-center space-x-2">
+              <span className="text-sm text-gray-400">{file.name}</span>
+              <button
+                onClick={handleSendFile}
+                className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                disabled={loading}
+              >
+                Upload
+              </button>
+            </div>
           )}
         </div>
       )}
