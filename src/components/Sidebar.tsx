@@ -52,7 +52,7 @@ const Sidebar = ({ onChannelSelect }: SidebarProps) => {
 
   const fetchRequests = async () => {
     try {
-      const res = await fetch("/api/requests");
+      const res = await fetch("/api/test");
       if (!res.ok) throw new Error("Failed to fetch requests");
       const { sentRequests, receivedRequests } = await res.json();
       setSentRequests(sentRequests);
@@ -91,29 +91,30 @@ const Sidebar = ({ onChannelSelect }: SidebarProps) => {
     if (!requestTargetId.trim() || !selectedChannelId) return;
 
     try {
-      const res = await fetch("/api/requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          channelId: selectedChannelId,
-          targetId: requestTargetId, // Assuming targetId is a userId
-        }),
-      });
+        const res = await fetch("/api/channel-requests", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                channelId: selectedChannelId,
+                targetEmail: requestTargetId, // Change to targetEmail
+            }),
+        });
 
-      if (!res.ok) throw new Error("Failed to send request");
-      const newRequest = await res.json();
-      setSentRequests((prev) => [...prev, newRequest]);
-      setRequestTargetId("");
-      setShowRequestModal(false);
+        if (!res.ok) throw new Error("Failed to send request");
+        const newRequest = await res.json();
+        setSentRequests((prev) => [...prev, newRequest]);
+        setRequestTargetId("");
+        setShowRequestModal(false);
     } catch (error) {
-      console.error("Error sending request:", error);
-      alert("Failed to send request. Please try again.");
+        console.error("Error sending request:", error);
+        alert("Failed to send request. Please try again.");
     }
-  };
+};
+
 
   const handleRequestAction = async (requestId: string, action: "accept" | "reject") => {
     try {
-      const res = await fetch("/api/requests", {
+      const res = await fetch("/api/channel-requests", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requestId, action }),

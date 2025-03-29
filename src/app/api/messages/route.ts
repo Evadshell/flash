@@ -1,17 +1,26 @@
+// api/messages/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { auth } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth(); // Double cast
+    const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const clerk = await clerkClient();
+    if (!userId) throw new Error("User ID is null");
+    const user = await clerk.users.getUser(userId); 
+        const email = user.emailAddresses[0].emailAddress;
 
     const client = await clientPromise;
     const db = client.db("zenlarn");
+    const channelId = req.nextUrl.searchParams.get("channelId") || "general";
+
     const messages = await db
       .collection("messages")
-      .find({ channelId: req.nextUrl.searchParams.get("channelId") || "general" })
+      .find({ channelId })
       .sort({ createdAt: -1 })
       .limit(50)
       .toArray();
@@ -23,29 +32,4 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const { userId } = await auth() ; // Double cast
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { text, channelId } = await req.json();
-    if (!text || !channelId) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-
-    const client = await clientPromise;
-    const db = client.db("zenlarn");
-    const newMessage = {
-      userId,
-      channelId,
-      text,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    const result = await db.collection("messages").insertOne(newMessage);
-    const savedMessage = { ...newMessage, _id: result.insertedId };
-    return NextResponse.json(savedMessage, { status: 201 });
-  } catch (error) {
-    console.error("Error sending message:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-  }
-}
+// Remove POST since WebSocket handles message sending
