@@ -1,73 +1,80 @@
-import React, { useState } from 'react';
-import { useRouter } from 'next/router';
-import { Layout, Mail, Lock } from 'lucide-react';
+"use client";
+import React from "react";
+import { useRouter } from "next/navigation";
+import { Layout } from "lucide-react";
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/nextjs";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement actual authentication
-    router.push('/dashboard');
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg shadow-lg">
-        <div className="text-center">
-          <Layout className="mx-auto h-12 w-12 text-primary" />
-          <h2 className="mt-6 text-3xl font-bold">Welcome to RemoteHub</h2>
-          <p className="mt-2 text-muted-foreground">Sign in to your account</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-xl shadow-lg transform transition-all hover:shadow-xl">
+        {/* Header Section */}
+        <div className="text-center space-y-3">
+          <div className="flex justify-center">
+            <Layout className="h-14 w-14 text-blue-600 animate-pulse" />
+          </div>
+          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+            Welcome to Flash
+          </h2>
+          <p className="text-gray-600 text-sm">
+            Access your account to get started
+          </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium">
-                Email address
-              </label>
-              <div className="mt-1 relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 block w-full rounded-md border border-input bg-background px-3 py-2"
-                  placeholder="you@example.com"
-                />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 block w-full rounded-md border border-input bg-background px-3 py-2"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-          </div>
 
-          <div>
-            <button
-              type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+        {/* Auth Buttons Section */}
+        <div className="space-y-4">
+          <SignedOut>
+            <SignInButton mode="modal" >
+              <button className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                Sign In
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal" >
+              <button className="w-full bg-white text-blue-600 py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 font-medium">
+                Create an Account
+              </button>
+            </SignUpButton>
+          </SignedOut>
+
+          <SignedIn>
+            <div className="flex flex-col items-center space-y-4">
+              <UserButton
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: "h-12 w-12",
+                  },
+                }}
+              />
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="text-blue-600 hover:underline text-sm font-medium"
+              >
+                Go to Dashboard
+              </button>
+            </div>
+          </SignedIn>
+        </div>
+
+        {/* Forgot Password Link */}
+        <SignedOut>
+          <div className="text-center">
+            <a
+              href="/forgot-password" // Update this to your actual forgot password route
+              className="text-sm text-blue-600 hover:underline hover:text-blue-800 transition-colors duration-200"
             >
-              Sign in
-            </button>
+              Forgot your password?
+            </a>
           </div>
-        </form>
+        </SignedOut>
       </div>
     </div>
   );
